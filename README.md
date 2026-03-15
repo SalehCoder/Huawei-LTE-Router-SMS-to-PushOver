@@ -1,83 +1,120 @@
-# Huawei LTE/5G Router SMS to PushOver Notifications
+# Huawei Router SMS to PushOver Notifications
 
-This python script will read your text messages from Huawei router with HiLink then forward it to PushOver push notification. It's forked from [chenwei791129/Huawei-LTE-Router-SMS-to-E-mail-Sender](https://github.com/chenwei791129/Huawei-LTE-Router-SMS-to-E-mail-Sender) but with some changes:
-- Instead of sending email, it will send a push notification using PushOver. PushOver is working fine on my Android Pixel, iPhone SE, and iPads
-- Making sure that PushOver have received the notification before marking the SMS as read, by reading the HTTP response
-- Hopefully it will also keep the SMS message unread if Internet connection is down, but I haven't tested that yet
-- It should be executed periodically with cronjobs. In my case I'm running it every 20 seconds in a Raspberry Pi
+Forward SMS messages from your Huawei LTE/5G router to your mobile device via PushOver push notifications.
 
+## Quick Deploy
 
+### Docker (Recommended)
 
-Tested on:
-* Huawei H112-372
-* Huawei H112-370
-* Huawei E3372
-* Huawei E5573Cs-322
-* Huawei E5373s-155
-* Huawei E8372*
-* Raspberry Pi 4 Bullseye 64-bit
-
-If you have successfully run it on other Huawei routers, let me know to add it to the list.
-
-(*) You have to wait for several minute before the script successfuly works on E8372.
-
-## Operational content
-
-1. Find an unread SMS
-2. Send the SMS content via Pushover notification
-3. Set this SMS as "read"
-
-
-## How to use
-
-1. copy .env.example to .env
-```console
-$ cp .env.example .env
-$ nano .env
+```bash
+git clone https://github.com/SalehCoder/Huawei-LTE-Router-SMS-to-PushOver.git
+cd Huawei-Router-SMS-PushOver-Notifications
+cp .env.example .env
+nano .env  # Add credentials and set POLL_INTERVAL
+docker compose up -d
 ```
 
-2. just run it!
-```console
-$ python3 check-sms.py
+### Script (Bare Metal)
+
+```bash
+git clone https://github.com/SalehCoder/Huawei-LTE-Router-SMS-to-PushOver.git
+cd Huawei-Router-SMS-PushOver-Notifications
+./setup.sh
+cp .env.example .env
+nano .env  # Add credentials
+./check-sms.sh
 ```
 
-3. To periodically run it via crontab. I've set it to run to every minute
-```console
-$ sudo chmod u+x check-sms.sh
+## Configuration
+
+Edit `.env` with your settings:
+
+```bash
+# Required
+HUAWEI_ROUTER_PASSWORD="your_password"
+PUSHOVER_TOKEN="your_app_token"
+PUSHOVER_USER="your_user_key"
+
+# Optional
+HUAWEI_ROUTER_IP_ADDRESS="192.168.8.1"
+ROUTER_NAME="Home Router"
+SMS_RETENTION_DAYS="30"
+LOG_LEVEL="INFO"
+
+# Docker only
+POLL_INTERVAL="10"
+RUN_ON_START="true"
 ```
 
-Then add at the end for every minute execution:
-```console
-* * * * * /PATH/Huawei-LTE-Router-SMS-to-PushOver/check-sms.sh
+Get PushOver credentials at [pushover.net](https://pushover.net)
+
+## Usage
+
+### Docker
+```bash
+# Start
+docker compose up -d
+
+# Logs
+docker compose logs -f
+
+# Stop
+docker compose down
 ```
-or check every 10 seconds:
-```console
-* * * * * ( /PATH/check-sms.sh )  
-* * * * * ( sleep 20 ; /PATH/check-sms.sh )  
-* * * * * ( sleep 40 ; /PATH/check-sms.sh )  
+
+### Script
+```bash
+# Manual run
+./check-sms.sh
+
+# Dry run (reads router, prints what would be sent — no PushOver, no state change)
+./check-sms.sh --dry-run
+
+# Automated with cron (every 5 minutes)
+*/5 * * * * /full/path/to/check-sms.sh
 ```
-Don't forget to change PATH.
 
-### Necessary Environment Variables
-* `HUAWEI_ROUTER_PASSWORD` Huawei router login password (example: 123456). Leave empty if none
-* `PUSHOVER_TOKEN` API Token you get when creating a new application in PushOver.net
-* `PUSHOVER_USER` Your user key from PushOver
+## How It Works
 
-### Option Environment Variables
-* `HUAWEI_ROUTER_IP_ADDRESS` Huawei router IP address (default: 192.168.8.1)
-* `HUAWEI_ROUTER_ACCOUNT` Huawei router login account (default: admin)
-* `ROUTER_NAME` Router name you will see as part of the forwarded message. It'll help distinguish your routers if you have multiple routers.
-* `LOCALE` Set lang (default: en_US, support en_US, zh_TW, zh_HK, zh_CN)
+1. Connect to Huawei router via HiLink API
+2. Read unread SMS messages
+3. Send notifications to PushOver
+4. Verify notification delivered successfully
+5. Mark SMS as read only after confirmation
+6. Auto-delete old read messages based on retention policy
 
+## Features
 
-## Related Projects
+- Reliable delivery — marks SMS read only after PushOver confirms receipt
+- Automatic retries, smart filtering (phone/keyword), custom priority and sounds
+- Dry-run mode — reads router and prints what would be sent, no PushOver or state changes
+- Auto-cleanup — prevent inbox overflow by deleting old messages
+- Docker support — built-in poll loop (sub-minute intervals), no host dependencies
 
-- [theskumar/python-dotenv](https://github.com/theskumar/python-dotenv) (used for non-docker environment)
-- [Salamek/huawei-lte-api](https://github.com/Salamek/huawei-lte-api)
+## Tested Devices
+
+Huawei H112-372, H112-370, H158-381, E3372, E5573Cs-322, E5373s-155, E8372 · Raspberry Pi 4
+
+## Troubleshooting
+
+**Can't connect to router?** → `ping 192.168.8.1` and check router is on HiLink mode
+
+**PushOver not working?** → Test with `curl -s --form-string "token=X" --form-string "user=Y" --form-string "message=Test" https://api.pushover.net/1/messages.json`
+
+**Docker: container can't reach router?** → Ensure `network_mode: host` is set in `compose.yaml`
+
+**Virtual environment issues?** → `rm -rf venv && ./setup.sh`
+
+**Enable detailed logging:** → `LOG_LEVEL=DEBUG ./check-sms.sh`
+
+## Requirements
+
+Docker Engine (recommended) · Python 3.6+ for bare metal · PushOver account · Huawei HiLink router
+
+## Documentation
+
+See [DOCUMENTATION.md](DOCUMENTATION.md) for detailed configuration, filtering, Docker guide, and architecture.
 
 ## License
 
-The python script is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-
-
-
+[MIT License](LICENSE)

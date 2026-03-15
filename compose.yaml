@@ -1,0 +1,16 @@
+
+services:
+  huawei-sms-pushover:
+    # For production: uncomment image, comment build
+    build: .
+    # image: your-registry.example.com/your-image:latest
+    container_name: huawei-sms-pushover
+    env_file: .env
+    restart: unless-stopped
+    network_mode: host  # Required for router LAN access
+    healthcheck:
+      test: ["CMD", "sh", "-c", "test -f /tmp/healthy"]
+      interval: 15m
+      timeout: 10s
+      retries: 3
+      start_period: 10m
