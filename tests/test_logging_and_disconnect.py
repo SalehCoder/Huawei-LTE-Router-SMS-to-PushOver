@@ -70,6 +70,23 @@ class LoggingAndDisconnectTests(unittest.TestCase):
         self.assertIsNone(reader.connection)
         self.assertIsNone(reader.client)
 
+    def test_already_logged_in_uses_finally_cleanup_not_direct_logout(self):
+        module = load_module()
+        config = module.Config("192.168.8.1", "admin", "", "test", "test", "test")
+        processor = module.SMSProcessor(config)
+        reader = mock.Mock()
+        reader.connect.side_effect = module.huawei_lte_api.exceptions.LoginErrorAlreadyLoginException(
+            "already logged in", 108006
+        )
+        processor.sms_reader = reader
+
+        with self.assertLogs(module.logger, level=logging.WARNING):
+            result = processor.process()
+
+        self.assertEqual(result, 0)
+        reader.client.user.logout.assert_not_called()
+        reader.disconnect.assert_called_once_with()
+
 
 if __name__ == "__main__":
     unittest.main()

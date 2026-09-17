@@ -622,9 +622,9 @@ class SMSProcessor:
             logger.error("Session timeout, login again!")
             return -1
         except huawei_lte_api.exceptions.LoginErrorAlreadyLoginException:
-            logger.warning("Already logged in, logging out")
-            if self.sms_reader.client:
-                self.sms_reader.client.user.logout()
+            # The finally block closes the connection through the same
+            # session-aware path used after every other processing result.
+            logger.warning("Router reports an existing login; closing the current connection")
             return 0
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
