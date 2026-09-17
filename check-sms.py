@@ -14,9 +14,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Logging configuration
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").strip('"\'')
+LOG_LEVEL = os.getenv("LOG_LEVEL", "WARNING").strip('"\'')
 logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    level=getattr(logging, LOG_LEVEL, logging.WARNING),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -175,11 +175,18 @@ class HuaweiSMSReader:
     def disconnect(self) -> None:
         """Disconnect from the router."""
         try:
-            if self.client:
-                self.client.user.logout()
-                logger.debug("Logged out from router")
+            if self.connection:
+                # Connection.close() logs out only when an authenticated user
+                # session exists. Calling client.user.logout() unconditionally
+                # makes passwordless HiLink routers return error 100006 on
+                # every poll even though no login session was created.
+                self.connection.close()
+                logger.debug("Router connection closed")
         except Exception as e:
-            logger.warning(f"Error during logout: {e}")
+            logger.warning(f"Error while closing router connection: {e}")
+        finally:
+            self.client = None
+            self.connection = None
 
     def get_unread_messages(self) -> List[Dict[str, Any]]:
         """Fetch unread SMS messages from the router."""

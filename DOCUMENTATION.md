@@ -196,7 +196,7 @@ If `POLL_INTERVAL` is not set, the container runs the script once and exits — 
 
 #### Logging
 
-* `LOG_LEVEL` - Logging verbosity (default: `INFO`)
+* `LOG_LEVEL` - Logging verbosity (default: `WARNING`; use `INFO` or `DEBUG` temporarily for troubleshooting)
   * Options: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
 
 ## Usage

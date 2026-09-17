@@ -13,6 +13,7 @@ setup.sh
 venv/
 __pycache__/
 *.py[cod]
+tests/
 .vscode/
 .idea/
 .cursor/
